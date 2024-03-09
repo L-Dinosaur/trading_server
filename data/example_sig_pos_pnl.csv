@@ -1,0 +1,8 @@
+﻿time,Price S(t),Avg u(t)*,Vol 𝜎(t)*,signal a(t),position p(t),unit dollar return dS,pnl m(t)
+t0,S0,u0,𝜎0,"a0 = a(S0, u0, 𝜎0)",p0,0,m0
+t1,S1,u1,𝜎1,"a1 = a(S1, u1, 𝜎1)",p1 = p0 + a0,S1-S0,m1 = p0 * (S1-S0)
+t2,S2,u2,𝜎2,"a2 = a(S2, u2, 𝜎2)",p2 = p1 + a1,S2-S1,m2 = p1 * (S2-S1)
+t3,S3,u3,𝜎3,"a3 = a(S3, u3, 𝜎3)",p3 = p2 + a2,S3-S2,m3 = p2 * (S3-S2)
+t4,S4,u4,𝜎4,"a3 = a(S4, u4, 𝜎4)",p4 = p3 + a3,S4-S3,m4 = p3 * (S4-S3)
+,,,,,,,
+*ui and 𝜎i are rolling window functions up to time ti,,,,,,,
