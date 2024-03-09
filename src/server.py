@@ -14,13 +14,13 @@ NUM_HOURS_TRADING_DAY = 6.5  # 9:30 to 4:00
 NUM_MIN_TRADING_DAY = NUM_HOURS_TRADING_DAY * 60
 
 parser = ArgumentParser()
-parser.add_argument('-t', '--ticker', dest='tickers', nargs='*',
+parser.add_argument('-t', '--tickers', dest='tickers', nargs='*',
                     help="list of tickers", default=['SPX'])  # Assuming a default server set up on SPX prices
 parser.add_argument('-p', '--port', dest='port', default=8000, type=int,
                     help='port to bind the server to, use any value over 1023')
 parser.add_argument('-x', '--interval', dest='interval', default='30min',
                     help='intervals to get price data')
-parser.add_argument('-m', '--test_mode', dest='test_mode', default='False', type=bool,
+parser.add_argument('-m', '--test_mode', dest='test_mode', default=False, type=bool,
                     help='Test mode to use local data instead of query API')
 args = parser.parse_args()
 
@@ -132,5 +132,5 @@ if __name__ == '__main__':
     server_args = vars(args)
     server = Server(**server_args)
     server.calculate_signal()
-    server.internal_run()
+    server.run()
 
