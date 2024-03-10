@@ -28,10 +28,10 @@ Command Supported on the Client Side
 - _Data Source_: Finn Hub Quote
 
 ## Issues Encountered and Assumptions
-- Low API limit for Alpha Vantage (25 calls per day)
+- Low API limit for Alpha Vantage (25 calls per day for free tier)
   - __Resolution__: Build a "fake" data retriever with the same I/O behavior that pretends to get data from Alpha Vantage, but actually reads local data using Pandas
   - __Assumption__: Not going to query for all available history, but only trailing one month which contains (in most cases) enough data points for timeseries statistics calculation
-  - Given API request constraints (25 requests per day for free tier and one month data per request), unable to retrieve all available history. If API permits, could implement dynamic data fetching quite easily with some minor modification of the `DataRetrieverAV` class
+  - Given API request constraints (25 calls per day for free tier and one month data per request), unable to retrieve all available history. If API permits, could implement dynamic data fetching quite easily with some minor modification of the `DataRetrieverAV` class
 - No API available for getting intraday data for the live trading day
   - Alpha Vantage only provides up to t-1, FinnHub only provides latest quote with no near term history
   - Re-examine APIs if have more time
