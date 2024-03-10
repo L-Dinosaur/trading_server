@@ -1,5 +1,7 @@
 import requests
 import pandas as pd
+import os
+DATA_PATH = '../data'
 
 
 class DataRetriever(object):
@@ -62,6 +64,32 @@ class DataRetrieverFH(DataRetriever):
         df['price'] = data['c']
         df['ticker'] = ticker
         df.index.names = ['datetime']
+        return df
+
+
+class DataRetrieverPdAV(object):
+    """ Pandas Data Retriever used for testing server logic, used to preserve api request"""
+    def __init__(self):
+        self.data_path = DATA_PATH
+
+    def retrieve(self, ticker):
+        return pd.read_csv(os.path.join(self.data_path, 'av_price_' + ticker + '.csv'), index_col=0)
+
+    def process_data(self, df, ticker):
+        print("passing through df for {0}".format(ticker))
+        return df
+
+
+class DataRetrieverPdFH(object):
+    """ Pandas Data Retriever used for testing server logic, used to preserve api requests"""
+    def __init__(self):
+        self.data_path = DATA_PATH
+
+    def retrieve(self, ticker):
+        return pd.read_csv(os.path.join(self.data_path, 'fh_price_' + ticker + '.csv'), index_col=0)
+
+    def process_data(self, df, ticker):
+        print("passing through df for {0}".format(ticker))
         return df
 
 
