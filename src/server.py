@@ -113,8 +113,9 @@ class Server(object):
 
     def query(self, ticker, datetime):
         """ server side query function, for testing """
-        idx = (datetime - self.data[ticker].index).idxmin()
-        print(self.data[ticker].loc[idx, ['price', 'signal']])
+        datetime = pd.to_datetime(datetime, format='%Y-%m-%d-%H:%M')
+        idx = pd.Series(datetime - self.data[ticker].index).abs().idxmin()  # map query datetime to nearest available
+        return self.data[ticker].iloc[[idx], :][['ticker', 'price', 'signal']]
 
     def add_ticker(self, ticker):
 
@@ -136,7 +137,7 @@ class Server(object):
     def process_query(self, message):
         query = pickle.loads(message)
         if query.inst == "data":
-            data = pd.concat([df.loc[query.arg, ['ticker', 'price', 'signal']] for df in self.data.values()]).to_dict()
+            data = pd.concat([self.query(ticker, query.arg) for ticker in self.tickers]).to_dict()
             return Response(DATA, SUCCESS, data)
 
         elif query.inst == "add":

@@ -38,7 +38,6 @@ Command Supported on the Client Side
 - Payload too large, need to optimize
   - Instead of sending "success", use int code to success/failure
   - Instead of sending requested price/signal as dataframe, use dictionary which are much less costly
-
 ## Next Steps
 - Add more user input error handling logic on both client and server sides
 - Write unittests for each class
