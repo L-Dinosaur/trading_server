@@ -6,15 +6,7 @@ from argparse import ArgumentParser
 import pickle
 from data_retriever import DataRetrieverAV, DataRetrieverFH, DataRetrieverPdAV, DataRetrieverPdFH
 from message import Query, Response
-
-interval_map = {'5min': 5,
-                '10min': 10,
-                '15min': 15,
-                '30min': 30,
-                '60min': 60}
-
-NUM_HOURS_TRADING_DAY = 6.5  # 9:30 to 4:00
-NUM_MIN_TRADING_DAY = NUM_HOURS_TRADING_DAY * 60
+from constant import *
 
 parser = ArgumentParser()
 parser.add_argument('-t', '--tickers', dest='tickers', nargs='*',
@@ -124,24 +116,15 @@ class Server(object):
         idx = (datetime - self.data[ticker].index).idxmin()
         print(self.data[ticker].loc[idx, ['price', 'signal']])
 
-    def data_dummy(self):
-        print("data request returned")
-
     def add_ticker(self, ticker):
 
         self.tickers.append(ticker)
         self.data[ticker] = self.pull_data(ticker)
         self.calculate_all(ticker)
 
-    def add_ticker_dummy(self, ticker):
-        print("ticker {0} added".format(ticker))
-
     def delete_ticker(self, ticker):
         self.tickers.remove(ticker)
         self.data.pop(ticker)
-
-    def delete_ticker_dummy(self, ticker):
-        print("ticker {0} deleted".format(ticker))
 
     def refresh_data(self):
         # Logic:
@@ -150,43 +133,25 @@ class Server(object):
             self.calculate_all(ticker)
         self.save_data()
 
-    def refresh_data_dummy(self):
-        print("data refreshed")
-
-    def internal_run(self):
-        """ server internal run for testing """
-        while True:
-            user_args = input(">>").split(" ")
-            if user_args[0] == 'END':
-                print('ending internal run...')
-                break
-            datetime = pd.to_datetime(user_args[1], format='%Y-%m-%d-%H:%M')
-            ticker = user_args[0]
-            self.query(ticker, datetime)
-
     def process_query(self, message):
         query = pickle.loads(message)
         if query.inst == "data":
-            data = pd.concat([df.loc[query.arg, ['ticker', 'price', 'signal']] for df in self.data.values()])
-            return Response("data", "success", data)
-            # self.data_dummy()
-            # return Response("data", "success", None)
+            data = pd.concat([df.loc[query.arg, ['ticker', 'price', 'signal']] for df in self.data.values()]).to_dict()
+            return Response(DATA, SUCCESS, data)
+
         elif query.inst == "add":
             self.add_ticker(query.arg)
-            return Response("add", "success", "query.arg")
-            # self.add_ticker_dummy(query.arg)
-            # return Response("add", "success", None)
+            return Response(ADD, SUCCESS, query.arg)
+
         elif query.inst == "delete":
             self.delete_ticker(query.arg)
-            # self.delete_ticker_dummy(query.arg)
-            return Response("delete", "success", "query.arg")
+
+            return Response(DELETE, SUCCESS, query.arg)
         elif query.inst == "report":
             self.refresh_data()
-            # TODO: to csv
-            # self.refresh_data_dummy()
-            return Response("report", "success", None)
+            return Response(REPORT, SUCCESS, None)
         else:
-            return Response(query.inst, "failure", "Undefined Instruction")
+            return Response(UNKNOWN, ERROR, "Undefined Instruction")
 
     def run(self):
 
@@ -200,11 +165,14 @@ class Server(object):
 
             with conn:
                 print("Connected to client")
-                data = conn.recv(4096)
+                data = conn.recv(PACKET_SIZE)
                 if not data:
                     break
                 response = self.process_query(data)
                 response_s = pickle.dumps(response)
+                if len(response_s) > PACKET_SIZE:
+                    # Data Check
+                    response_s = pickle.dumps(Response(response.inst, ERROR, "Response payload too large."))
                 print('Sending Message size: {0}'.format(len(response_s)))
                 conn.sendall(response_s)
                 conn.close()

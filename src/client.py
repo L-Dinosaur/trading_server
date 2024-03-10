@@ -1,8 +1,9 @@
 import socket
 from argparse import ArgumentParser
 import pickle
-from message import Query, Response
-
+from message import Query
+import pandas as pd
+from constant import *
 
 parser = ArgumentParser()
 parser.add_argument('-m', '--test_mode', dest='test_mode', default=False, type=bool,
@@ -35,17 +36,15 @@ class Client(object):
 
     def process_response(self, response_s):
         response = pickle.loads(response_s)
-        if response.result == "success":
-            if response.inst == "data":
-                print(response.data)
-            elif response.inst == "add":
+        if response.result == SUCCESS:
+            if response.inst == DATA:
+                print(pd.DataFrame(response.data))
+            elif response.inst == ADD:
                 print("Ticker: " + response.data + " added.")
-            elif response.inst == "delete":
+            elif response.inst == DELETE:
                 print("Ticker: " + response.data + " deleted.")
-            elif response.inst == "report":
+            elif response.inst == REPORT:
                 print("report refreshed")  # TODO: Should I put this into response.data and print that?
-            else:
-                print("response type not known: " + response.inst)
         else:
             print("query failed, error message: " + response.data)
 
@@ -69,7 +68,7 @@ class Client(object):
                 query_s = pickle.dumps(query)
                 print('Sending message of size: {0}'.format(len(query_s)))
                 s.sendall(query_s)
-                data = s.recv(4096)
+                data = s.recv(PACKET_SIZE)
                 self.process_response(data)
                 s.close()
 
