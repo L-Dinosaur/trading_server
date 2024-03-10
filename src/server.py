@@ -37,7 +37,7 @@ class Server(object):
 
         # self.av = DataRetrieverAV(**self.av_cfg)
         # self.fh = DataRetrieverFH(**self.fh_cfg)
-        self.av = DataRetrieverPdAV() # Testing server using pandas data retriever
+        self.av = DataRetrieverPdAV()  # Testing server using pandas data retriever
         self.fh = DataRetrieverPdFH()
         # TODO: handle different stitching scenarios {live trading day / outside of trading hours}
         for ticker in self.tickers:
@@ -119,13 +119,21 @@ class Server(object):
 
     def add_ticker(self, ticker):
 
-        self.tickers.append(ticker)
-        self.data[ticker] = self.pull_data(ticker)
-        self.calculate_all(ticker)
+        try:
+            self.tickers.append(ticker)
+            self.data[ticker] = self.pull_data(ticker)
+            self.calculate_all(ticker)
+            return SUCCESS, "Successfully added ticker {0}".format(ticker)
+        except Exception as e:  # TODO: add more specific exception handling
+            return ERROR, "Unable to add ticker {0}".format(ticker)
 
     def delete_ticker(self, ticker):
-        self.tickers.remove(ticker)
-        self.data.pop(ticker)
+        try:
+            self.tickers.remove(ticker)
+            self.data.pop(ticker)
+            return SUCCESS, "Successfully deleted ticker {0}".format(ticker)
+        except Exception as e:  # TODO: add more specific exception handling
+            return ERROR, "Unable to delete ticker {0}".format(ticker)
 
     def refresh_data(self):
         # Logic:
@@ -137,17 +145,17 @@ class Server(object):
     def process_query(self, message):
         query = pickle.loads(message)
         if query.inst == "data":
-            data = pd.concat([self.query(ticker, query.arg) for ticker in self.tickers]).to_dict()
+            data = pd.concat([self.query(ticker, query.arg) for ticker in self.tickers]).to_dict('list')
+            # data['index'] = query.arg
             return Response(DATA, SUCCESS, data)
 
         elif query.inst == "add":
-            self.add_ticker(query.arg)
-            return Response(ADD, SUCCESS, query.arg)
+            result, msg = self.add_ticker(query.arg)
+            return Response(ADD, result, msg)
 
         elif query.inst == "delete":
-            self.delete_ticker(query.arg)
-
-            return Response(DELETE, SUCCESS, query.arg)
+            result, msg = self.delete_ticker(query.arg)
+            return Response(DELETE, result, msg)
         elif query.inst == "report":
             self.refresh_data()
             return Response(REPORT, SUCCESS, None)
@@ -168,7 +176,8 @@ class Server(object):
                 print("Connected to client")
                 data = conn.recv(PACKET_SIZE)
                 if not data:
-                    break
+                    conn.close()
+                    continue
                 response = self.process_query(data)
                 response_s = pickle.dumps(response)
                 if len(response_s) > PACKET_SIZE:
@@ -184,4 +193,3 @@ if __name__ == '__main__':
     server_args = vars(args)
     server = Server(**server_args)
     server.run()
-

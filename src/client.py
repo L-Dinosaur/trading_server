@@ -4,6 +4,7 @@ import pickle
 from message import Query
 import pandas as pd
 from constant import *
+import datetime
 
 parser = ArgumentParser()
 parser.add_argument('-m', '--test_mode', dest='test_mode', default=False, type=bool,
@@ -30,23 +31,47 @@ class Client(object):
         msg = msg.split(" ")
         inst = msg[0]
         arg = None
-        if len(msg) == 2:
+
+        # Check num of args
+
+        if len(msg) == 1:
+            if inst != 'report':
+                return self.error_prompt("Invalid command")
+        elif (len(msg) == 0) or (len(msg) > 2) :
+            return self.error_prompt("Incorrect number of arguments")
+        else:
             arg = msg[1]
+            # Check to ensure correct query sent to the server
+            if inst == 'data':
+                if not self.validate_dt_string(arg):
+                    return self.error_prompt("Datetime format incorrect")
+
         return Query(inst, arg)
+
+    def validate_dt_string(self, dt_str):
+        try:
+            ts = datetime.datetime.strptime(dt_str, '%Y-%m-%d-%H:%M')
+        except ValueError:
+            return False
+        return True
+
+    def error_prompt(self, error_message):
+        print(error_message)
+        return None
 
     def process_response(self, response_s):
         response = pickle.loads(response_s)
         if response.result == SUCCESS:
             if response.inst == DATA:
-                print(pd.DataFrame(response.data))
-            elif response.inst == ADD:
-                print("Ticker: " + response.data + " added.")
-            elif response.inst == DELETE:
-                print("Ticker: " + response.data + " deleted.")
+                # index_datetime = pd.to_datetime(response.data.pop('index'), format='%Y-%m-%d-%H:%M')
+                ticker_index = response.data.pop('ticker')
+                print(pd.DataFrame(response.data, index=ticker_index))
+            elif (response.inst == ADD) or (response.inst == DELETE):
+                print(response.data)
             elif response.inst == REPORT:
                 print("report refreshed")  # TODO: Should I put this into response.data and print that?
         else:
-            print("query failed, error message: " + response.data)
+            print("Action failed: " + response.data)
 
     def run(self):
 
@@ -65,6 +90,9 @@ class Client(object):
                 msg = input(">>")
                 s.connect((self.host, self.port))
                 query = self.prep_query(msg)
+                if not query:
+                    s.close()
+                    continue
                 query_s = pickle.dumps(query)
                 print('Sending message of size: {0}'.format(len(query_s)))
                 s.sendall(query_s)

@@ -31,6 +31,7 @@ Command Supported on the Client Side
 - Low API limit for Alpha Vantage (25 calls per day)
   - __Resolution__: Build a "fake" data retriever with the same I/O behavior that pretends to get data from Alpha Vantage, but actually reads local data using Pandas
   - __Assumption__: Not going to query for all available history, but only trailing one month which contains (in most cases) enough data points for timeseries statistics calculation
+  - Given API request constraints (25 requests per day for free tier and one month data per request), unable to retrieve all available history. If API permits, could implement dynamic data fetching quite easily with some minor modification of the `DataRetrieverAV` class
 - No API available for getting intraday data for the live trading day
   - Alpha Vantage only provides up to t-1, FinnHub only provides latest quote with no near term history
   - Re-examine APIs if have more time
@@ -38,11 +39,12 @@ Command Supported on the Client Side
 - Payload too large, need to optimize
   - Instead of sending "success", use int code to success/failure
   - Instead of sending requested price/signal as dataframe, use dictionary which are much less costly
-- My current payload construction truncates the dataframe (To be resolved)
-
+- My current payload construction truncates the dataframe and contain info for one ticker
+  - Issue: `pandas.DataFrame.to_dict()` method by default returns "dict-like" dictionaries which are indexed by the dataframe index. As the different ticker rows share the same timestamp as index, the first ticker was kept while other tickers disgarded
+  - Resolution: does not need timestamp in the output anyway, change the `pandas.DataFrame.to_dict()` behavior to 'list-like'
 ## Next Steps
-- Add more user input error handling logic on both client and server sides
 - Write unittests for each class
 - Explore other higher level (such as HTTP) APIs for the networking logic
 - Explore threading to concurrently handle clients
+  - Will become more useful with more dynamic data fetching and hence longer time to service each client
 - Fine tune some data processing logic to handle edge cases that can arise depending on time of the day or day of the week when this is used.
