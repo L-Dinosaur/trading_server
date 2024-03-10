@@ -3,3 +3,6 @@ AV_KEY: 'AC0GWZFNLV7MF4Z0'
 AV_URL: 'https://www.alphavantage.co/query?'
 FH_URL: 'https://finnhub.io/api/v1/quote?'
 FH_TOKEN: 'cnltsshr01qut4m3uve0cnltsshr01qut4m3uveg'
+
+local_data_mode: True
+interval: '30min'

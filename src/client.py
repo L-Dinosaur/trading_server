@@ -1,13 +1,14 @@
 import socket
 from argparse import ArgumentParser
 import pickle
+from message import Query, Response
 
 
 parser = ArgumentParser()
 parser.add_argument('-m', '--test_mode', dest='test_mode', default=False, type=bool,
                     help="Enter into local test mode if True, default False")
-parser.add_argument('-s', '--server', dest='addr', default='127.0.0.1:8000',
-                    help="Server address to query from, default local host port 8000")
+parser.add_argument('-s', '--server', dest='addr', default='127.0.0.1:8080',
+                    help="Server address to query from, default local host port 8080")
 args = parser.parse_args()
 
 
@@ -24,6 +25,30 @@ class Client(object):
         if inst[0] != 'report':
             print('Argument: ' + inst[1])
 
+    def prep_query(self, msg):
+        msg = msg.split(" ")
+        inst = msg[0]
+        arg = None
+        if len(msg) == 2:
+            arg = msg[1]
+        return Query(inst, arg)
+
+    def process_response(self, response_s):
+        response = pickle.loads(response_s)
+        if response.result == "success":
+            if response.inst == "data":
+                print(response.data)
+            elif response.inst == "add":
+                print("Ticker: " + response.data + " added.")
+            elif response.inst == "delete":
+                print("Ticker: " + response.data + " deleted.")
+            elif response.inst == "report":
+                print("report refreshed")  # TODO: Should I put this into response.data and print that?
+            else:
+                print("response type not known: " + response.inst)
+        else:
+            print("query failed, error message: " + response.data)
+
     def run(self):
 
         if self.test_mode:
@@ -35,13 +60,17 @@ class Client(object):
                     break
                 self.internal_test(inst)
         else:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.connect((self.host, self.port))
+
             while True:
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 msg = input(">>")
-                s.sendall(bytes(msg, 'utf-8'))
-                data = s.recv(1024)
-                print(f"data received: {data}")
+                s.connect((self.host, self.port))
+                query = self.prep_query(msg)
+                query_s = pickle.dumps(query)
+                s.sendall(query_s)
+                data = s.recv(4096)
+                self.process_response(data)
+                s.close()
 
 
 if __name__ == '__main__':
