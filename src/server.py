@@ -4,7 +4,7 @@ import yaml
 import os
 from argparse import ArgumentParser
 import pickle
-from data_retriever import DataRetrieverAV, DataRetrieverFH
+from data_retriever import DataRetrieverAV, DataRetrieverFH, DataRetrieverPdAV, DataRetrieverPdFH
 from message import Query, Response
 
 interval_map = {'5min': 5,
@@ -18,8 +18,8 @@ NUM_MIN_TRADING_DAY = NUM_HOURS_TRADING_DAY * 60
 
 parser = ArgumentParser()
 parser.add_argument('-t', '--tickers', dest='tickers', nargs='*',
-                    help="list of tickers", default=['SPX'])  # Assuming a default server set up on SPX prices
-parser.add_argument('-p', '--port', dest='port', default=8000, type=int,
+                    help="list of tickers", default=['IBM'])  # Assuming a default server set up on IBM prices
+parser.add_argument('-p', '--port', dest='port', default=8080, type=int,
                     help='port to bind the server to, use any value over 1023')
 args = parser.parse_args()
 
@@ -38,26 +38,24 @@ class Server(object):
 
         # Initialize data
         self.data = dict()
-        # if self.cfg['local_data_mode']:
-        #     data_path = os.path.join(_path, '../data')
-        #     _df = pd.concat([pd.read_csv(os.path.join(data_path, 'av_price.csv'), index_col=0),
-        #                      pd.read_csv(os.path.join(data_path, 'fh_price.csv'), index_col=0)])
-        #     _df.index = pd.to_datetime(_df.index, format='%Y-%m-%d %H:%M:%S')
-        #     _df.sort_index(inplace=True)
-        #     self.data = {ticker: _df[_df['ticker'] == ticker] for ticker in tickers}
-        # else:
-        #     self.av_cfg = dict()
-        #     self.fh_cfg = dict()
-        #     self.init_dr_cfg(tickers, self.interval)
-        #     self.av = DataRetrieverAV(**self.av_cfg)
-        #     self.fh = DataRetrieverFH(**self.fh_cfg)
-        #     # TODO: handle different stitching scenarios {live trading day / outside of trading hours}
-        #     for ticker in self.tickers:
-        #         self.data[ticker] = self.pull_data(ticker)
-        #
-        # # Calculate Signal, Position, PnL
-        # for ticker in self.tickers:
-        #     self.calculate_all(ticker)
+
+        self.av_cfg = dict()
+        self.fh_cfg = dict()
+        self.init_dr_cfg(tickers, self.interval)
+
+        # self.av = DataRetrieverAV(**self.av_cfg)
+        # self.fh = DataRetrieverFH(**self.fh_cfg)
+        self.av = DataRetrieverPdAV() # Testing server using pandas data retriever
+        self.fh = DataRetrieverPdFH()
+        # TODO: handle different stitching scenarios {live trading day / outside of trading hours}
+        for ticker in self.tickers:
+            self.data[ticker] = self.pull_data(ticker)
+
+        # Calculate Signal, Position, PnL
+        for ticker in self.tickers:
+            self.calculate_all(ticker)
+
+        self.save_data()
 
         # Initialize Network
         self.host = "127.0.0.1"
@@ -69,6 +67,9 @@ class Server(object):
         _df.index = pd.to_datetime(_df.index, format='%Y-%m-%d %H:%M:%S')
         _df.sort_index(inplace=True)
         return _df
+
+    def save_data(self):
+        pd.concat([df for df in self.data.values()]).to_csv('report.csv')
 
     def init_dr_cfg(self, tickers, interval):
         self.av_cfg['key'] = self.cfg['AV_KEY']
@@ -147,6 +148,7 @@ class Server(object):
         for ticker in self.tickers:
             self.data[ticker] = self.pull_data(ticker)
             self.calculate_all(ticker)
+        self.save_data()
 
     def refresh_data_dummy(self):
         print("data refreshed")
@@ -165,23 +167,23 @@ class Server(object):
     def process_query(self, message):
         query = pickle.loads(message)
         if query.inst == "data":
-            # data = pd.concat([df.loc[query.arg, ['ticker', 'price']] for df in self.data.values()])
-            # return Response("data", "success", data)
-            self.data_dummy()
-            return Response("data", "success", None)
+            data = pd.concat([df.loc[query.arg, ['ticker', 'price', 'signal']] for df in self.data.values()])
+            return Response("data", "success", data)
+            # self.data_dummy()
+            # return Response("data", "success", None)
         elif query.inst == "add":
-            # self.add_ticker(query.arg)
+            self.add_ticker(query.arg)
+            return Response("add", "success", "query.arg")
+            # self.add_ticker_dummy(query.arg)
             # return Response("add", "success", None)
-            self.add_ticker_dummy(query.arg)
-            return Response("add", "success", None)
         elif query.inst == "delete":
-            # self.delete_ticker(query.arg)
-            self.delete_ticker_dummy(query.arg)
-            return Response("delete", "success", None)
+            self.delete_ticker(query.arg)
+            # self.delete_ticker_dummy(query.arg)
+            return Response("delete", "success", "query.arg")
         elif query.inst == "report":
-            # self.refresh_data()
+            self.refresh_data()
             # TODO: to csv
-            self.refresh_data_dummy()
+            # self.refresh_data_dummy()
             return Response("report", "success", None)
         else:
             return Response(query.inst, "failure", "Undefined Instruction")
@@ -203,6 +205,7 @@ class Server(object):
                     break
                 response = self.process_query(data)
                 response_s = pickle.dumps(response)
+                print('Sending Message size: {0}'.format(len(response_s)))
                 conn.sendall(response_s)
                 conn.close()
                 print("Service performed, connection closed")

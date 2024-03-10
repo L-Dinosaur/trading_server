@@ -67,6 +67,7 @@ class Client(object):
                 s.connect((self.host, self.port))
                 query = self.prep_query(msg)
                 query_s = pickle.dumps(query)
+                print('Sending message of size: {0}'.format(len(query_s)))
                 s.sendall(query_s)
                 data = s.recv(4096)
                 self.process_response(data)
