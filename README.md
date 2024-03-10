@@ -10,7 +10,7 @@ run client
 ```commandline
 python client.py --server 127.0.0.1:8080
 ```
-Command Supported
+Command Supported on the Client Side
 - data YYYY-MM-DD-HH:MM (example: data 2024-02-28-12:30)
   - returns the price and signal data available in the server data set that's closest to the datetime supplied
 - add TICKER (example: add AAPL)
