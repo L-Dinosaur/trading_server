@@ -7,41 +7,35 @@ from constant import *
 import datetime
 
 parser = ArgumentParser()
-parser.add_argument('-m', '--test_mode', dest='test_mode', default=False, type=bool,
-                    help="Enter into local test mode if True, default False")
 parser.add_argument('-s', '--server', dest='addr', default='127.0.0.1:8080',
                     help="Server address to query from, default local host port 8080")
 args = parser.parse_args()
 
 
 class Client(object):
-    def __init__(self, test_mode, addr):
-        self.test_mode = test_mode
+    """ Clinet CLI"""
+    def __init__(self, addr):
         [self.host, self.port] = addr.split(":")
         self.port = int(self.port)
 
-    def internal_test(self, inst):
-        print('Query summary:')
-        print('Address: ' + self.host + ':' + self.port)
-        print('Instruction: ' + inst[0])
-        if inst[0] != 'report':
-            print('Argument: ' + inst[1])
+    def prep_request(self, msg):
 
-    def prep_query(self, msg):
+        """ Package up request to send to server """
+
+        # Process CLI instruction
         msg = msg.split(" ")
         inst = msg[0]
         arg = None
 
         # Check num of args
-
         if len(msg) == 1:
             if inst != 'report':
                 return self.error_prompt("Invalid command")
         elif (len(msg) == 0) or (len(msg) > 2) :
             return self.error_prompt("Incorrect number of arguments")
-        else:
+        else:  # Correct number of arguments
             arg = msg[1]
-            # Check to ensure correct query sent to the server
+            # validate datetime format for "data" requests
             if inst == 'data':
                 if not self.validate_dt_string(arg):
                     return self.error_prompt("Datetime format incorrect")
@@ -49,6 +43,7 @@ class Client(object):
         return Query(inst, arg)
 
     def validate_dt_string(self, dt_str):
+        """ helper method to validate datetime format of {dt_str}"""
         try:
             ts = datetime.datetime.strptime(dt_str, '%Y-%m-%d-%H:%M')
         except ValueError:
@@ -56,14 +51,16 @@ class Client(object):
         return True
 
     def error_prompt(self, error_message):
+        """ helper method to print {error message} locally and return None result"""
         print(error_message)
         return None
 
     def process_response(self, response_s):
+        """ Process response sent back from the server """
         response = pickle.loads(response_s)
+
         if response.result == SUCCESS:
             if response.inst == DATA:
-                # index_datetime = pd.to_datetime(response.data.pop('index'), format='%Y-%m-%d-%H:%M')
                 ticker_index = response.data.pop('ticker')
                 print(pd.DataFrame(response.data, index=ticker_index))
             elif (response.inst == ADD) or (response.inst == DELETE):
@@ -74,31 +71,25 @@ class Client(object):
             print("Action failed: " + response.data)
 
     def run(self):
+        """ Run client CLI """
 
-        if self.test_mode:
-            while True:
-                inst = input(">>")
-                inst = inst.split(" ")
-                if inst[0] == 'END':
-                    print("Ending local testing")
-                    break
-                self.internal_test(inst)
-        else:
+        while True:  # Infinite loop to open connection, send request, process response, and close connection
+            # One connection per request to free up socket resources given blocking implementation
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-            while True:
-                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                msg = input(">>")
-                s.connect((self.host, self.port))
-                query = self.prep_query(msg)
-                if not query:
-                    s.close()
-                    continue
-                query_s = pickle.dumps(query)
-                print('Sending message of size: {0}'.format(len(query_s)))
-                s.sendall(query_s)
-                data = s.recv(PACKET_SIZE)
-                self.process_response(data)
+            msg = input(">>")
+            s.connect((self.host, self.port))
+            query = self.prep_request(msg)
+            if not query:
                 s.close()
+                continue
+
+            query_s = pickle.dumps(query)
+            print('Sending message of size: {0}'.format(len(query_s)))
+            s.sendall(query_s)
+            data = s.recv(PACKET_SIZE)
+            self.process_response(data)
+            s.close()
 
 
 if __name__ == '__main__':
