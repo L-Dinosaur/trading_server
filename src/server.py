@@ -34,11 +34,10 @@ class Server(object):
         self.fh_cfg = dict()
         self.init_dr_cfg(tickers, self.interval)
 
-        # Testing server using pandas data retriever
-        # self.av = DataRetrieverAV(**self.av_cfg)
-        # self.fh = DataRetrieverFH(**self.fh_cfg)
-        self.av = DataRetrieverPdAV()
-        self.fh = DataRetrieverPdFH()
+        self.av = DataRetrieverAV(**self.av_cfg)
+        self.fh = DataRetrieverFH(**self.fh_cfg)
+        # self.av = DataRetrieverPdAV()          # Testing server using pandas data retriever
+        # self.fh = DataRetrieverPdFH()
         for ticker in self.tickers:
             self.data[ticker] = self.pull_data(ticker)
 
@@ -82,9 +81,7 @@ class Server(object):
         self.fh_cfg['key'] = self.cfg['FH_TOKEN']
         self.fh_cfg['url'] = self.cfg['FH_URL']
         self.av_cfg['interval'] = interval
-        self.av_cfg['tickers'] = tickers
         self.fh_cfg['interval'] = interval
-        self.fh_cfg['tickers'] = tickers
 
     def calculate_signal(self, ticker):
         """ Calculate signal on price series"""

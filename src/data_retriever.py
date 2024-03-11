@@ -45,6 +45,7 @@ class DataRetrieverAV(DataRetriever):
         df.drop(["1. open", "2. high", "3. low", "5. volume"], axis=1, inplace=True)
         df.rename({"4. close": "price"}, axis=1, inplace=True)
         df["ticker"] = ticker
+        df['price'] = df['price'].astype(float)
         df.index.names = ['datetime']
         return df
 

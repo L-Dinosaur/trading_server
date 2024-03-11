@@ -43,6 +43,7 @@ class DataRetrieverTest(unittest.TestCase):
         self.assertIn('datetime', self.av_data.index.names)
         self.assertIn('price', self.av_data.columns)
         self.assertIn('ticker', self.av_data.columns)
+        self.assertIsInstance(self.av_data['price'][0], float)
 
     def testFHData(self):
         """ Test FH Data Processing """
