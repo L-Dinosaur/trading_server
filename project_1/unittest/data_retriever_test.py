@@ -1,5 +1,5 @@
 import unittest
-from src.data_retriever import DataRetrieverAV, DataRetrieverFH
+from project_1.src.data_retriever import DataRetrieverAV, DataRetrieverFH
 AV_KEY = 'AC0GWZFNLV7MF4Z0'
 AV_URL = 'https://www.alphavantage.co/query?'
 FH_URL = 'https://finnhub.io/api/v1/quote?'
